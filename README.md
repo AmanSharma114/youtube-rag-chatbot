@@ -1,8 +1,8 @@
-# YouTube RAG Chatbot
+# Cueframe · YouTube RAG Chatbot
 
 Ask questions about a captioned YouTube video. Each answer includes a transcript excerpt and a timestamp link so you can check what the speaker said. Paste the link on the home page and select **Chat with this video**. The default mode retrieves excerpts directly from the video captions. Select **Local AI (Ollama)** in **Chat settings** for embedding-based retrieval and generated answers.
 
-![Offline demo showing a question about overlapping chunks and the matching timestamp](demo-preview.png)
+![Cueframe landing page with the YouTube link form](cueframe-preview.png)
 
 ## Try the offline demo
 
@@ -42,7 +42,7 @@ Open the local URL printed by Streamlit. Paste a YouTube URL and select **Chat w
 4. **Retrieve** up to four passages by cosine similarity. Short follow-ups include the previous question in the search query.
 5. **Generate** evidence-backed statements with local `qwen2.5:3b`. Each statement must reference a retrieved passage and quote its text. The app drops invalid citations and shows an insufficient-evidence response when none survive.
 
-The quote check verifies that cited words appear in a retrieved passage. The reader can use the excerpt to judge whether it supports the generated claim. Jump links point to the start of the passage. Indexes and chat history live in the Streamlit session. Remote videos require accessible captions and a connection to YouTube, which may restrict transcript requests. The standalone HTML sample works offline.
+The quote check verifies that cited words appear in a retrieved passage. The reader can use the excerpt to judge whether it supports the generated claim. Timestamp links jump to the first caption containing the cited words. The displayed range extends through the last caption in the quote. Indexes and chat history live in the Streamlit session. Remote videos require accessible captions and a connection to YouTube, which may restrict transcript requests. The standalone HTML sample works offline.
 
 ## Tests
 

@@ -31,7 +31,7 @@ def excerpt_answer(rows, question):
     if best is None:
         return []
     return [(best["text"], best["text"], {"start": int(best["start"]),
-                                          "end": int(best["start"] + best["duration"])})]
+                                          "end": math.ceil(best["start"] + best["duration"])})]
 
 
 def video_id(value):
@@ -63,10 +63,16 @@ def chunks(rows):
                 break
             size += len(captions[j]["text"]) + 1
             j += 1
-        last = captions[j - 1]
-        docs.append(Document(page_content=" ".join(c["text"].strip() for c in captions[i:j]),
-                             metadata={"start": int(captions[i]["start"]),
-                                       "end": int(last["start"] + last["duration"])}))
+        offsets = []
+        position = 0
+        texts = []
+        for caption in captions[i:j]:
+            text = caption["text"].strip()
+            texts.append(text)
+            offsets.append((position, position + len(text), int(caption["start"]),
+                            math.ceil(caption["start"] + caption["duration"])))
+            position += len(text) + 1
+        docs.append(Document(page_content=" ".join(texts), metadata={"offsets": offsets}))
         if j == len(captions):
             break
         i = max(i + 1, j - 1)
@@ -109,5 +115,10 @@ def answer(index, question, previous):
         statement = claim.get("answer")
         if (source in passages and isinstance(quote, str) and quote.strip()
                 and quote.strip() in passages[source] and isinstance(statement, str) and statement.strip()):
-            verified.append((statement.strip(), quote.strip(), docs[int(source)-1].metadata))
+            doc = docs[int(source) - 1]
+            quote = quote.strip()
+            begin = doc.page_content.index(quote)
+            end = begin + len(quote)
+            spans = [span for span in doc.metadata["offsets"] if span[0] < end and span[1] > begin]
+            verified.append((statement.strip(), quote, {"start": spans[0][2], "end": spans[-1][3]}))
     return verified

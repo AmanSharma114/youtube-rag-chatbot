@@ -19,7 +19,8 @@ class PipelineTests(unittest.TestCase):
             rag.video_id("https://example.org/watch?v=dQw4w9WgXcQ")
 
     def test_source_validation(self):
-        rows = [{"text": "A caption.", "start": 3, "duration": 4}]
+        rows = [{"text": "Opening.", "start": 0, "duration": 2},
+                {"text": "A caption.", "start": 3, "duration": 4}]
         index = Mock()
         index.invoke.return_value = rag.chunks(rows)
         good = {"answer": "The speaker says A caption.", "source": 1, "quote": "A caption."}

@@ -1,3 +1,7 @@
+from html import escape
+from math import sin
+from pathlib import Path
+
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import YouTubeTranscriptApiException
@@ -6,23 +10,35 @@ from rag import MISSING, answer, excerpt_answer, retriever, video_id
 
 
 def stamp(seconds):
+    if seconds >= 3600:
+        return f"{seconds // 3600}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-st.set_page_config(page_title="Transcript Chat", page_icon="▶")
-st.title("Transcript Chat")
-st.caption("Paste a YouTube link to ask questions about what the speaker said.")
+st.set_page_config(page_title="Cueframe · Video chat", page_icon="▶", layout="wide",
+                   initial_sidebar_state="collapsed")
+st.html("<style>" + Path(__file__).with_name("style.css").read_text(encoding="utf-8") + "</style>")
+st.html('<div class="brand"><i aria-hidden="true">▷</i> Cueframe</div>')
+if "rows" not in st.session_state:
+    bars = "".join(f'<b style="height:{12 + int(84 * abs(sin(i*.23)*sin(i*1.17)))}px"></b>'
+                   for i in range(54))
+    st.html(f'<div class="hero"><div class="intro"><h1>Chat with your<br><em>YouTube video.</em></h1>'
+            '<p>Ask about a video and jump straight to the moment that answers your question.</p>'
+            f'</div><div aria-hidden="true" class="scope">{bars}</div></div>')
 with st.form("source"):
-    link = st.text_input("YouTube video link", placeholder="https://www.youtube.com/watch?v=…")
+    link = st.text_input("YouTube video link", placeholder="Paste a YouTube link…")
     with st.expander("Chat settings"):
         language = st.text_input("Preferred caption language", "en")
         mode = st.radio("Answer mode", ["Transcript excerpts", "Local AI (Ollama)"],
                         help="Excerpt search works immediately. Local AI uses the two models in the setup guide.")
     load = st.form_submit_button("Chat with this video", type="primary")
 
-if load:
+example = False
+if "rows" not in st.session_state:
+    example = st.button("Try a video · Me at the zoo", icon=":material/play_circle:")
+if load or example:
     try:
-        vid = video_id(link)
+        vid = "jNQXAC9IVRw" if example else video_id(link)
         with st.spinner("Extracting the video's transcript…"):
             rows = YouTubeTranscriptApi().fetch(vid, languages=[language.strip() or "en", "en"]).to_raw_data()
             if not any(row["text"].strip() for row in rows):
@@ -32,6 +48,7 @@ if load:
             with st.spinner("Embedding the transcript locally…"):
                 new_index = retriever(rows)
         st.session_state.update(index=new_index, vid=vid, rows=rows, history=[], mode=mode)
+        st.rerun()
     except ValueError as exc:
         st.error(str(exc))
     except YouTubeTranscriptApiException as exc:
@@ -43,9 +60,13 @@ if "rows" not in st.session_state:
     st.stop()
 
 vid = st.session_state.vid
-st.markdown(f"Chatting with [this YouTube video](https://youtu.be/{vid}) · {st.session_state.mode}")
-with st.expander(f"Read transcript · {len(st.session_state.rows)} captions"):
-    st.text("\n".join(f"{stamp(int(row['start']))}  {row['text']}" for row in st.session_state.rows))
+with st.expander(f"Video & transcript · {len(st.session_state.rows)} captions"):
+    player, transcript = st.columns([1, 1])
+    player.video(f"https://www.youtube.com/watch?v={vid}")
+    with transcript.container(height=240):
+        st.text("\n".join(f"{stamp(int(row['start']))}  {row['text']}" for row in st.session_state.rows))
+st.subheader("Video conversation")
+st.caption(f"{st.session_state.mode} · Select a timestamp to play the cited moment on YouTube.")
 
 
 def show_turn(question, claims):
@@ -54,12 +75,12 @@ def show_turn(question, claims):
         if not claims:
             st.write(MISSING)
         for statement, quote, meta in claims:
-            st.text(statement)
             start = meta["start"]
             label = f'{stamp(start)}–{stamp(meta["end"])}'
-            if quote != statement:
-                st.text(quote)
-            st.markdown(f"[{label} · Play passage](https://youtu.be/{vid}?t={start})")
+            evidence = f'<blockquote class="evidence">{escape(quote)}</blockquote>' if quote != statement else ""
+            st.html(f'<p class="answer">{escape(statement)}</p>{evidence}'
+                    f'<a class="cue" href="https://youtu.be/{vid}?t={start}" target="_blank" '
+                    f'rel="noopener noreferrer" aria-label="Play passage {label}">▶ {label}</a>')
 
 
 history = st.session_state.history
