@@ -13,14 +13,15 @@ LOCAL = "http://127.0.0.1:11434"
 MISSING = "I couldn't find support for that in the retrieved transcript passages."
 
 
-def excerpt_answer(rows, question):
-    """Rank complete thoughts, including sentences that span multiple captions."""
-    stop = set("a an and are as at be by can did do does for from how i in is it me of on or say says that the they this to video was what when where which who why with you".split())
+STOP = set(("a an and are as at be by can did do does for from how i in is it me of on or say says "
+            "that the they this to video was what when where which who why with you").split())
 
-    def words(text):
-        return set(re.findall(r"[^\W_]+", text.casefold())) - stop
 
-    terms = words(question)
+def words(text):
+    return set(re.findall(r"[^\W_]+", text.casefold())) - STOP
+
+
+def caption_passages(rows):
     passages = []
     parts = []
     for row in rows:
@@ -39,6 +40,83 @@ def excerpt_answer(rows, question):
             parts = []
     if parts:
         passages.append((" ".join(parts), start, last_end))
+    return passages
+
+
+def overview_question(question):
+    normalized = " ".join(re.findall(r"[a-z0-9]+", question.lower().replace("’", "'")))
+    normalized = re.sub(r"^(?:please |can you |could you )+", "", normalized)
+    normalized = re.sub(r"^(?:tell me |give me |explain )", "", normalized)
+    normalized = re.sub(r"^(?:what(?: s| is| are)? |list )", "", normalized)
+    normalized = re.sub(r"\b(?:the|this|that|a|an|of|in|entire|whole)\b", " ", normalized)
+    normalized = " ".join(normalized.split())
+    return bool(re.fullmatch(
+        r"(?:(?:main |overall |key )?(?:topics?|subjects?|points?|takeaways?|ideas?|theme|gist|overview|summary)"
+        r"(?: (?:video|talk|lecture))?|(?:video|talk|lecture)(?: (?:main topic|topic|about|on|cover|covers|summary))"
+        r"|summari[sz]e(?: (?:video|talk|lecture|it))?|(?:video|talk|lecture) (?:mainly |mostly )?about"
+        r"|does (?:video|talk|lecture) (?:cover|discuss))", normalized))
+
+
+def overview(rows, title, question):
+    """Anchor the topic in the introduction and check the title against the captions."""
+    passages = []
+    for doc in chunks(rows):
+        for match in re.finditer(r"[^.!?]+(?:[.!?]+|$)", doc.page_content):
+            text = match.group().strip()
+            if len(words(text)) < 3:
+                continue
+            begin = match.start() + len(match.group()) - len(match.group().lstrip())
+            spans = [span for span in doc.metadata["offsets"] if span[0] < match.end() and span[1] > begin]
+            if spans:
+                passages.append((text, spans[0][2], spans[-1][3]))
+    if not passages:
+        passages = caption_passages(rows)
+    extra_stop = {"so", "just", "we", "our", "my", "very", "like", "yeah", "okay", "right",
+                  "know", "topic", "about", "going", "really", "here", "there", "have", "your"}
+    terms = [words(text) - extra_stop for text, _, _ in passages]
+    frequency = Counter(t for group in terms for t in group)
+    title_words = words(title) - extra_stop
+    anchors = title_words & frequency.keys()
+    # Common words such as "every" or "actually" alone cannot corroborate a title.
+    supported_title = bool(title_words and len(anchors) >= min(2, len(title_words))
+                           and not title.startswith("YouTube video "))
+    duration = max(1, passages[-1][2] - passages[0][1])
+    ranked = []
+    for i, (text, start, _) in enumerate(passages):
+        position = (start - passages[0][1]) / duration
+        topic_cue = re.search(r"\b(topic of (?:this|the) video|(?:in this (?:video|talk|lesson)|today) "
+                              r"(?:we|i)|(?:we.ll|we will) (?:cover|explore|discuss))\b", text.lower())
+        recurring = sum(math.log1p(frequency[t]) for t in terms[i]) / max(1, len(terms[i])) ** .65
+        score = recurring + 3 * len(terms[i] & anchors) + 3 * max(0, 1 - position * 4)
+        if topic_cue and position < .3:
+            score += 15
+        ranked.append((score, i))
+    ranked.sort(reverse=True)
+    selected = [ranked[0][1]]
+    detailed = re.search(r"summari[sz]e|summary|takeaways?|points?|topics|overview", question, re.I)
+    for _, i in ranked[1:] if detailed else []:
+        if len(selected) == 3:
+            break
+        if len(terms[i]) < 4 or any(abs(i-j) < 2 or
+                len(terms[i] & terms[j]) / max(1, len(terms[i] | terms[j])) > .45 for j in selected):
+            continue
+        selected.append(i)
+    claims = []
+    for i in selected:
+        text, start, end = passages[i]
+        statement = f"The main topic is “{title.rstrip('.')}”." if not claims and supported_title else text
+        claims.append((statement, text, {"start": int(start), "end": math.ceil(end)}))
+    return claims
+
+
+def excerpt_answer(rows, question, title=""):
+    """Use whole-transcript evidence for overviews and focused retrieval for details."""
+    passages = caption_passages(rows)
+    if not passages:
+        return []
+    if overview_question(question):
+        return overview(rows, title, question)
+    terms = words(question)
     captions = [words(passage[0]) for passage in passages]
     frequency = Counter(term for caption in captions for term in caption)
     best_score, best = 0, None

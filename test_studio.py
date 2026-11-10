@@ -9,6 +9,22 @@ from rag import excerpt_answer
 
 
 class StudioTests(unittest.TestCase):
+    def test_topic_question_is_distinct_from_a_specific_topic(self):
+        rows = [
+            {"text": "The topic of this video is what data engineers do every day.", "start": 4, "duration": 5},
+            {"text": "They build pipelines and check the quality of incoming data.", "start": 90, "duration": 7},
+            {"text": "Unity Catalog is a very important topic.", "start": 300, "duration": 3},
+        ]
+        title = "Daily work of data engineers"
+        for question in ["topic of video?", "What's this video about?", "main subject"]:
+            claims = excerpt_answer(rows, question, title)
+            self.assertEqual(len(claims), 1)
+            statement, quote, times = claims[0]
+            self.assertIn(title, statement)
+            self.assertIn("data engineers", quote)
+            self.assertEqual(times, {"start": 4, "end": 9})
+        self.assertEqual(excerpt_answer(rows, "Where is Unity Catalog mentioned?", title)[0][2]["start"], 300)
+
     def test_caption_continuation(self):
         rows = [
             {"text": "The planet is visible", "start": 8.2, "duration": 2},

@@ -12,7 +12,7 @@ import requests
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import YouTubeTranscriptApiException
 
-from rag import answer, excerpt_answer, retriever, video_id
+from rag import answer, excerpt_answer, overview_question, retriever, video_id
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.getenv("CUEFRAME_DATA_DIR", Path.home() / ".cueframe"))
@@ -87,11 +87,11 @@ def process(db, route, data):
         question = data["question"].strip()
         if not 1 <= len(question) <= 2000:
             raise ValueError("Enter a question of up to 2,000 characters.")
-        if data.get("mode") == "ai":
+        if data.get("mode") == "ai" and not overview_question(question):
             prev = db.execute("SELECT question FROM turns WHERE video=? AND lang=? ORDER BY id DESC LIMIT 1", key).fetchone()
             claims = answer(semantic_index(*key), question, prev[0] if prev else "")
         else:
-            claims = excerpt_answer(rows, question)
+            claims = excerpt_answer(rows, question, record["title"])
         db.execute("INSERT INTO turns(video,lang,question,claims) VALUES(?,?,?,?)", (*key, question, json.dumps(claims)))
         return {"question":question, "claims":claims}
     if route == "save":
