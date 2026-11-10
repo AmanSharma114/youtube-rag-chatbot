@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17291f"><title>Cueframe — Video Studio</title><link rel="stylesheet" href="/studio.css"><script type="module" src="/studio.js"></script></head>
+<body>
+<aside><a href="#studio" class="brand"><i>▸</i>Cueframe</a>
+<div class="navlabel">Workspace</div>
+<nav aria-label="Workspace"><a href="#studio" data-nav="studio"><span>◈</span> Studio</a><a href="#library" data-nav="library"><span>▤</span> Video library <b id="vcount">0</b></a><a href="#moments" data-nav="moments"><span>⚑</span> Saved moments <b id="mcount">0</b></a></nav>
+<div class="profile"><i>CF</i><div>Personal workspace<small>Local storage</small></div></div></aside>
+<div class="shell"><header><div><span class="crumb">Workspace</span><em>/</em><strong id="location">Studio</strong></div><button id="settings" class="quiet">⚙ &nbsp;Settings</button></header>
+<main id="main"></main></div><div id="notice" role="status" hidden></div>
+<dialog id="prefs"><form method="dialog"><div class="spread"><h2>Chat settings</h2><button aria-label="Close settings">×</button></div>
+<label>Answer mode<select id="mode"><option value="excerpt">Transcript excerpts</option><option value="ai">Local AI · Ollama</option></select></label><p>Local AI uses qwen2.5:3b and nomic-embed-text on this computer.</p><label>Caption language<input id="lang" placeholder="en" maxlength="15"></label><button class="primary">Done</button></form></dialog>
+<template id="home"><section class="hero"><div class="hero-content"><h1>Turn video into<br><i>answers.</i></h1><p>Chat with a YouTube transcript and jump to the exact moment behind every answer.</p></div><div class="film" aria-hidden="true"></div></section>
+<form id="import"><label for="url">Open a video</label><div class="importline"><span aria-hidden="true">↗</span><input id="url" placeholder="Paste a YouTube link…" required autocomplete="off"><button class="primary">Open studio <b>→</b></button></div></form>
+<section><div class="sectionhead"><div><h2>Explore a video</h2><p>Start a conversation with a featured transcript.</p></div></div><div class="cards" id="featured"></div></section><section id="recent"></section></template>
+<template id="video"><div class="spread top"><a href="#studio" class="back">← Studio</a><button id="export">↓ Export notes</button></div>
+<h1 id="vtitle" class="pagetitle"></h1><p id="byline" class="sub"></p>
+<div class="desk"><div><div class="player"><iframe id="player" title="YouTube video player" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><a id="yt" class="external" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>
+<section class="panel"><h2>Transcript</h2><input id="filter" type="search" aria-label="Search captions" placeholder="Search captions…"><div id="captions" class="scroll"></div></section></div>
+<section class="panel chat"><h2>Video chat</h2><small id="answer-mode"></small><div id="history" aria-live="polite"></div><form id="ask"><label for="question">Ask about this video</label><textarea id="question" maxlength="2000" rows="2" required placeholder="Type a question…"></textarea><button class="primary">Ask question →</button></form></section></div></template>
+</body></html>

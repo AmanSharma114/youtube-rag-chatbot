@@ -14,24 +14,43 @@ MISSING = "I couldn't find support for that in the retrieved transcript passages
 
 
 def excerpt_answer(rows, question):
-    """Rank timestamped captions by overlap, giving uncommon terms more weight."""
+    """Rank complete thoughts, including sentences that span multiple captions."""
     stop = set("a an and are as at be by can did do does for from how i in is it me of on or say says that the they this to video was what when where which who why with you".split())
 
     def words(text):
         return set(re.findall(r"[^\W_]+", text.casefold())) - stop
 
     terms = words(question)
-    captions = [words(row["text"]) for row in rows]
+    passages = []
+    parts = []
+    for row in rows:
+        text = row["text"].strip()
+        if not text or re.fullmatch(r"\[.*?\]|♪+", text):
+            continue
+        if parts and (row["start"] - last_end > 4 or len(" ".join(parts)) > 420):
+            passages.append((" ".join(parts), start, last_end))
+            parts = []
+        if not parts:
+            start = row["start"]
+        parts.append(text)
+        last_end = row["start"] + row["duration"]
+        if re.search(r"""[.!?]["'”’)]*$""", text):
+            passages.append((" ".join(parts), start, last_end))
+            parts = []
+    if parts:
+        passages.append((" ".join(parts), start, last_end))
+    captions = [words(passage[0]) for passage in passages]
     frequency = Counter(term for caption in captions for term in caption)
     best_score, best = 0, None
-    for row, caption in zip(rows, captions):
-        score = sum(math.log1p(len(rows) / frequency[t]) for t in terms & caption)
+    for passage, caption in zip(passages, captions):
+        score = sum(math.log1p(len(passages) / frequency[t]) for t in terms & caption)
+        score /= 1 + len(caption) / 100
         if score > best_score:
-            best_score, best = score, row
+            best_score, best = score, passage
     if best is None:
         return []
-    return [(best["text"], best["text"], {"start": int(best["start"]),
-                                          "end": math.ceil(best["start"] + best["duration"])})]
+    text, start, end = best
+    return [(text, text, {"start": int(start), "end": math.ceil(end)})]
 
 
 def video_id(value):

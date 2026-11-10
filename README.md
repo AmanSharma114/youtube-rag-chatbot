@@ -1,49 +1,59 @@
-# Cueframe · YouTube RAG Chatbot
+# Cueframe
 
-Ask questions about a captioned YouTube video. Each answer includes a transcript excerpt and a timestamp link so you can check what the speaker said. Paste the link on the home page and select **Chat with this video**. The default mode retrieves excerpts directly from the video captions. Select **Local AI (Ollama)** in **Chat settings** for embedding-based retrieval and generated answers.
+A local video research workspace. Paste a YouTube link, ask a question, and click the cited timestamp to play that moment. No hosted service or OpenAI key is required.
 
-![Cueframe landing page with the YouTube link form](cueframe-preview.png)
+![Cueframe studio with the video import form and featured videos](cueframe-preview.png)
 
-## Try the offline demo
+## Run the studio
 
-Download or clone this repository and open **demo.html** in a browser. Ask **Why overlap chunks?** to see the excerpt at **0:16**, then ask **Who sponsored the video?** to see the missing-evidence response. The standalone preview uses word matching over an original sample transcript and works without installation.
+Use Python 3.11 or 3.12. From this repository:
 
-## Run the full RAG chatbot
+```sh
+python -m venv .venv
+```
 
-Install Python 3.11 or 3.12 and [Ollama](https://ollama.com/download). Ollama is optional for transcript excerpt chat. For AI generation, start Ollama and download the two models once using the pull commands below. Model downloads require internet access and local disk space.
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\python studio.py
+```
+
+macOS or Linux:
+
+```sh
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python studio.py
+```
+
+Open [Cueframe on localhost](http://127.0.0.1:8501). Paste a link or open one of the featured videos. The server binds to the loopback address. Set `CUEFRAME_PORT` to choose another port.
+
+## Work with a video
+
+- **Ask a question.** Excerpt mode ranks timestamped transcript passages and displays the speaker's words. It uses lexical matching, so specific terms work best.
+- **Check the source.** Click the green time range to seek the embedded player. Search the transcript and click a caption to hear it in context. Videos with embedding restrictions can be opened on YouTube.
+- **Save a moment.** Bookmark an answer's evidence, then return to its timestamp from Saved moments.
+- **Resume your research.** The library retains transcripts, chat history, and saved moments in SQLite at `~/.cueframe/workspace.sqlite`. Override the directory with `CUEFRAME_DATA_DIR`. This is a single-user local workspace.
+- **Export notes.** Download the conversation and bookmarks as Markdown with timestamped YouTube links.
+- **Choose a caption language.** Open Settings before importing a video. English is the fallback. Live ingestion requires accessible YouTube captions and internet access.
+
+## Enable local AI generation
+
+Install [Ollama](https://ollama.com/download), start it locally and download both models:
 
 ```sh
 ollama pull nomic-embed-text
 ollama pull qwen2.5:3b
-python -m venv .venv
 ```
 
-On Windows PowerShell:
+Select **Settings → Answer mode → Local AI**. On the first AI question, the server embeds overlapping caption chunks and builds a LangChain in-memory vector index. The retriever selects up to four passages, and the local chat model generates statements with exact supporting quotes. Cueframe checks each quote against its referenced passage and attaches the caption range containing the quoted words. A quote match verifies that the words appear in the transcript. Use the timestamp to assess the model's interpretation.
 
-```powershell
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python -m streamlit run app.py --server.address 127.0.0.1
-```
+## Demo and tests
 
-On macOS or Linux:
+The featured videos use real captions. For a standalone preview without installing Python, open **demo.html**, which searches an original bundled sample. The earlier Streamlit interface remains available via `python -m streamlit run app.py` on a free port.
 
-```sh
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
-```
+Run `python -m unittest -v` inside the environment. Tests cover retrieval, citation timing, local persistence and the Streamlit compatibility interface. The model tests use test doubles.
 
-Open the local URL printed by Streamlit. Paste a YouTube URL and select **Chat with this video**. Read the extracted transcript or type a question. Select the timestamp under an answer to open the original passage. Indexing a new video starts a fresh conversation.
+## Media
 
-## How an answer is produced
-
-1. **Ingest** captions from YouTube with their start times and durations. English is the fallback for the requested caption language.
-2. **Chunk** neighboring captions into passages targeting 45 seconds and 900 characters. Adjacent passages overlap by one caption where possible.
-3. **Embed and index** the passages with local `nomic-embed-text` embeddings and LangChain's in-memory vector store.
-4. **Retrieve** up to four passages by cosine similarity. Short follow-ups include the previous question in the search query.
-5. **Generate** evidence-backed statements with local `qwen2.5:3b`. Each statement must reference a retrieved passage and quote its text. The app drops invalid citations and shows an insufficient-evidence response when none survive.
-
-The quote check verifies that cited words appear in a retrieved passage. The reader can use the excerpt to judge whether it supports the generated claim. Timestamp links jump to the first caption containing the cited words. The displayed range extends through the last caption in the quote. Indexes and chat history live in the Streamlit session. Remote videos require accessible captions and a connection to YouTube, which may restrict transcript requests. The standalone HTML sample works offline.
-
-## Tests
-
-Run `python -m unittest -v` inside the project environment. The tests exercise video URL parsing, citation validation and the Streamlit video chat workflow with model test doubles.
+The studio's [orbital photograph](https://images.unsplash.com/photo-1446776811953-b23d57bd21aa) is served locally. Featured cards use their videos' YouTube thumbnails, titles, and channel names.

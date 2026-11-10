@@ -1,0 +1,29 @@
+[
+  {
+    "id": "dE-vOscpiNc",
+    "title": "NASA | Earthrise: The 45th Anniversary",
+    "author": "NASA Goddard",
+    "category": "Space science",
+    "image": "/media/dE-vOscpiNc.jpg",
+    "question": "Why was the Earthrise photograph a group effort?",
+    "duration": 414
+  },
+  {
+    "id": "aircAruvnKk",
+    "title": "But what is a neural network? | Deep learning chapter 1",
+    "author": "3Blue1Brown",
+    "category": "Machine learning",
+    "image": "/media/aircAruvnKk.jpg",
+    "question": "How does the network recognize a handwritten digit?",
+    "duration": 1120
+  },
+  {
+    "id": "UF8uR6Z6KLc",
+    "title": "Steve Jobs' 2005 Stanford Commencement Address",
+    "author": "Stanford",
+    "category": "Creative thinking",
+    "image": "/media/UF8uR6Z6KLc.jpg",
+    "question": "What did Steve Jobs learn from calligraphy?",
+    "duration": 904
+  }
+]

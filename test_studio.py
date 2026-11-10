@@ -1,0 +1,45 @@
+import tempfile
+import unittest
+from contextlib import closing
+from pathlib import Path
+from unittest.mock import patch
+
+import studio
+from rag import excerpt_answer
+
+
+class StudioTests(unittest.TestCase):
+    def test_caption_continuation(self):
+        rows = [
+            {"text": "The planet is visible", "start": 8.2, "duration": 2},
+            {"text": "through the side window.", "start": 10.2, "duration": 1.5},
+        ]
+        claims = excerpt_answer(rows, "Which window?")
+        self.assertEqual(claims[0][2], {"start": 8, "end": 12})
+        self.assertIn("planet is visible through", claims[0][0])
+        self.assertEqual(excerpt_answer(rows, "sponsors"), [])
+
+    def test_library_chat_and_bookmarks_persist(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(studio, "DATA", Path(folder)), \
+             patch.object(studio.YouTubeTranscriptApi, "fetch") as fetch, patch.object(studio.requests, "get") as meta:
+            fetch.return_value.to_raw_data.return_value = [{"text":"An orbital camera.", "start":5, "duration":3}]
+            meta.return_value.json.return_value = {"title":"Orbit", "author_name":"Example"}
+            video = {"video":"jNQXAC9IVRw", "lang":"en"}
+            studio.initialize()
+            with closing(studio.database()) as db, db:
+                studio.process(db, "load", video)
+                result = studio.process(db, "ask", {**video, "question":"Which camera?"})
+                quote, timing = result["claims"][0][1:]
+                for _ in range(2):
+                    studio.process(db, "save", {**video, **timing, "quote":quote})
+            with closing(studio.database()) as db, db:
+                reopened = studio.process(db, "load", video)
+                self.assertEqual(reopened["turns"][0]["claims"][0][2]["start"], 5)
+                saved = studio.workspace(db)["moments"]
+                self.assertEqual(len(saved), 1)
+                self.assertEqual(studio.process(db, "unsave", {"id":saved[0]["id"]})["moments"], [])
+            fetch.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()
