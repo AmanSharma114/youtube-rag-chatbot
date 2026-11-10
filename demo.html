@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transcript Chat · Offline demo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f3ed;color:#182721;font:16px/1.55 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:6vh 5vw}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #b8c2bb;padding-bottom:1rem}header b{color:#176147}h1{font:clamp(38px,7vw,70px)/1.05 Georgia,serif;letter-spacing:-.05em;margin:2.2rem 0 1rem}p{max-width:62ch}section{background:white;border:1px solid #c4cec7;border-radius:14px;padding:clamp(15px,4vw,32px);margin-top:24px}form{display:flex;gap:8px;flex-wrap:wrap}input,button{font:inherit;border-radius:7px;padding:10px 14px;border:1px solid #a7b5ac}input{flex:1;min-width:160px}button{cursor:pointer;background:#185c46;color:white}#examples button{font-size:14px;background:transparent;color:#185c46;margin:4px 2px}article{border-left:3px solid #63a48a;padding:0 14px;margin:20px 0}small,time{color:#34634f}summary{cursor:pointer}li{padding:.4rem}#history{max-height:360px;overflow:auto}h2{font-size:19px}
+</style>
+<main><header><b>▶ Transcript Chat</b><small>Offline demo</small></header>
+<h1>Ask the transcript.</h1><p>Explore an original 1:56 lesson on video retrieval. This demo finds matching caption excerpts locally. The Python app adds embeddings and local AI generation.</p>
+<section><h2>Chat with the sample lesson</h2><div id="history" role="log" aria-live="polite"></div>
+<form><input id="query" aria-label="Question" placeholder="Ask about the lesson…" required><button>Ask</button></form>
+<div id="examples"><button>Why overlap chunks?</button><button>How are timestamps useful?</button><button>Who sponsored the video?</button></div></section>
+<section><details><summary>Read sample transcript</summary><ol id="captions"></ol></details></section></main>
+<script>
+const rows = [
+  {"start": 0, "duration": 16, "text": "A transcript lets us search the words spoken in a video. Each caption has a start time and a duration."},
+  {"start": 16, "duration": 22, "text": "We split the transcript into overlapping chunks. Overlap preserves context when an explanation crosses a chunk boundary."},
+  {"start": 38, "duration": 19, "text": "An embedding model converts each chunk into a numeric vector. Similar meanings tend to produce vectors that point in similar directions."},
+  {"start": 57, "duration": 20, "text": "The retriever embeds the question and ranks transcript vectors by cosine similarity. The highest-ranked passages become evidence for the answer."},
+  {"start": 77, "duration": 22, "text": "A local language model reads those passages and answers the question. If the transcript lacks the answer, the chatbot should say so."},
+  {"start": 99, "duration": 17, "text": "Timestamps let the viewer jump back to the original explanation and verify the answer in context."}
+];
+const stop = new Set("a an and are as at be by do does for from how i in is it of on or that the these this to us we what when who why with video lesson are useful".split(" "));
+function terms(text) {
+  return new Set((text.toLowerCase().match(/[a-z]+/g) || []).filter(w => !stop.has(w)).map(w => w.replace(/s$/, "")));
+}
+function search(question) {
+  const q = terms(question);
+  return rows.map(row => {
+    const words = terms(row.text);
+    let score = 0;
+    for (const w of q) if (words.has(w)) score += 1 / Math.sqrt(words.size);
+    return {row, score};
+  }).sort((a,b) => b.score-a.score).find(hit => hit.score > 0)?.row;
+}
+function el(tag, content, parent) {
+  const child = document.createElement(tag);
+  child.textContent = content;
+  parent.append(child);
+  return child;
+}
+function stamp(s) { return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
+const log = document.querySelector("#history");
+const input = document.querySelector("#query");
+function ask(q) {
+  if (!q.trim()) return;
+  const box = el("article","",log);
+  el("strong", q, box);
+  const hit = search(q);
+  if (hit) {
+    el("p", hit.text, box);
+    el("time", stamp(hit.start) + "–" + stamp(hit.start + hit.duration), box);
+  } else el("p","No matching passage found in the sample transcript.",box);
+  log.scrollTop = log.scrollHeight;
+  input.value = "";
+  input.focus();
+}
+for(const row of rows) el("li",stamp(row.start)+" · "+row.text,document.querySelector("#captions"));
+document.querySelector("form").onsubmit = e => {e.preventDefault();ask(input.value);};
+for(const button of document.querySelectorAll("#examples button")) button.onclick = () => ask(button.textContent);
+</script></html>
