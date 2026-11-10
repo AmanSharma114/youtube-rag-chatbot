@@ -1,6 +1,6 @@
 # YouTube RAG Chatbot
 
-Ask questions about a captioned YouTube video. Each answer includes a transcript excerpt and a timestamp link so you can check what the speaker said. Embeddings and generation run on your machine through Ollama.
+Ask questions about a captioned YouTube video. Each answer includes a transcript excerpt and a timestamp link so you can check what the speaker said. Paste the link on the home page and select **Chat with this video**. The default mode retrieves excerpts directly from the video captions. Select **Local AI (Ollama)** in **Chat settings** for embedding-based retrieval and generated answers.
 
 ![Offline demo showing a question about overlapping chunks and the matching timestamp](demo-preview.png)
 
@@ -10,7 +10,7 @@ Download or clone this repository and open **demo.html** in a browser. Ask **Why
 
 ## Run the full RAG chatbot
 
-Install Python 3.11 or 3.12 and [Ollama](https://ollama.com/download). Start Ollama and download the two models once. Model downloads require internet access and local disk space.
+Install Python 3.11 or 3.12 and [Ollama](https://ollama.com/download). Ollama is optional for transcript excerpt chat. For AI generation, start Ollama and download the two models once using the pull commands below. Model downloads require internet access and local disk space.
 
 ```sh
 ollama pull nomic-embed-text
@@ -32,7 +32,7 @@ On macOS or Linux:
 .venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
 ```
 
-Open the local URL printed by Streamlit. Click **Index transcript** with an empty URL to use the sample, or paste a YouTube link and enter a caption language code. Ask a question and expand **Transcript evidence** to inspect its source. Indexing a new video starts a fresh conversation.
+Open the local URL printed by Streamlit. Paste a YouTube URL and select **Chat with this video**. Read the extracted transcript or type a question. Select the timestamp under an answer to open the original passage. Indexing a new video starts a fresh conversation.
 
 ## How an answer is produced
 
@@ -42,8 +42,8 @@ Open the local URL printed by Streamlit. Click **Index transcript** with an empt
 4. **Retrieve** up to four passages by cosine similarity. Short follow-ups include the previous question in the search query.
 5. **Generate** evidence-backed statements with local `qwen2.5:3b`. Each statement must reference a retrieved passage and quote its text. The app drops invalid citations and shows an insufficient-evidence response when none survive.
 
-The quote check verifies that cited words appear in a retrieved passage. The reader can use the excerpt to judge whether it supports the generated claim. Jump links point to the start of the passage. Indexes and chat history live in the Streamlit session. Remote videos require accessible captions and a connection to YouTube, which may restrict transcript requests. The sample works offline after setup.
+The quote check verifies that cited words appear in a retrieved passage. The reader can use the excerpt to judge whether it supports the generated claim. Jump links point to the start of the passage. Indexes and chat history live in the Streamlit session. Remote videos require accessible captions and a connection to YouTube, which may restrict transcript requests. The standalone HTML sample works offline.
 
 ## Tests
 
-Run `python -m unittest -v` inside the project environment. The tests exercise video URL parsing, citation validation and the Streamlit sample workflow with model test doubles.
+Run `python -m unittest -v` inside the project environment. The tests exercise video URL parsing, citation validation and the Streamlit video chat workflow with model test doubles.

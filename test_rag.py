@@ -29,10 +29,18 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(rag.answer(index, "What was said?", ""), [
                 (good["answer"], good["quote"], {"start": 3, "end": 7})])
 
-    def test_sample_app(self):
+    @patch("youtube_transcript_api.YouTubeTranscriptApi.fetch")
+    def test_video_chat(self, fetch):
+        fetch.return_value.to_raw_data.return_value = [{"text": "The elephants eat grass.", "start": 4, "duration": 3}]
         with patch("rag.OllamaEmbeddings", return_value=DeterministicFakeEmbedding(size=16)), patch("rag.ChatOllama") as model:
             model.return_value.invoke.return_value = SimpleNamespace(content='{"claims":[]}')
             app = AppTest.from_file(str(Path(__file__).with_name("app.py")), default_timeout=30).run()
+            app.text_input[0].set_value("https://youtu.be/jNQXAC9IVRw")
+            app.button[0].click().run()
+            fetch.assert_called_once()
+            app.chat_input[0].set_value("What do elephants eat?").run()
+            self.assertEqual(app.session_state["history"][0][1][0][0], "The elephants eat grass.")
+            app.radio[0].set_value("Local AI (Ollama)")
             app.button[0].click().run()
             self.assertIn("index", app.session_state)
             app.chat_input[0].set_value("Who sponsored the video?").run()
