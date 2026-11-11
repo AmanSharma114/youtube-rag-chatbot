@@ -9,6 +9,27 @@ from rag import excerpt_answer
 
 
 class StudioTests(unittest.TestCase):
+    def test_chat_history_is_scoped_to_video_and_caption_language(self):
+        import sqlite3
+
+        with closing(sqlite3.connect(":memory:")) as db, patch.object(studio, "semantic_index"), \
+                patch.object(studio, "answer", return_value=[]) as generate:
+            db.row_factory = sqlite3.Row
+            db.executescript("""
+                CREATE TABLE videos(id TEXT, lang TEXT, title TEXT, captions TEXT);
+                CREATE TABLE turns(id INTEGER PRIMARY KEY, video TEXT, lang TEXT, question TEXT, claims TEXT);
+                INSERT INTO videos VALUES('jNQXAC9IVRw','en','At the zoo','[]');
+            """)
+            for video, lang, question in [
+                ("jNQXAC9IVRw", "en", "Who is speaking?"),
+                ("jNQXAC9IVRw", "fr", "A question in another language"),
+                ("dE-vOscpiNc", "en", "A question about another video"),
+            ]:
+                db.execute("INSERT INTO turns(video,lang,question,claims) VALUES(?,?,?,'[]')",
+                           (video, lang, question))
+            studio.process(db, "ask", {"video":"jNQXAC9IVRw", "lang":"en", "question":"What did he say?"})
+            self.assertEqual(generate.call_args.args[2], [{"question":"Who is speaking?", "answer":[]}])
+
     def test_topic_question_is_distinct_from_a_specific_topic(self):
         rows = [
             {"text": "The topic of this video is what data engineers do every day.", "start": 4, "duration": 5},

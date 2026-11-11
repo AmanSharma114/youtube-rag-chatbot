@@ -1,59 +1,71 @@
 # Cueframe
 
-A local video research workspace. Paste a YouTube link, ask a question, and click the cited timestamp to play that moment. No hosted service or OpenAI key is required.
+**Ask a YouTube video a question and jump to the captions behind its answer.** Cueframe is a local retrieval-augmented generation (RAG) app for researching captioned videos. It supports follow-up questions, saved passages, and Markdown notes with playable citations. Inference runs on the user's machine through Ollama.
 
-![Cueframe studio with the video import form and featured videos](cueframe-preview.png)
+![Cueframe Studio with a YouTube link field and three captioned videos to explore](docs/cueframe-preview.png)
 
-## Run the studio
+## A conversation you can verify
 
-Use Python 3.11 or 3.12. From this repository:
+In *7 Daily Tasks Every Data Engineer Actually Does*, the instructor introduces two technology tracks. These results come from a run against the video's captions.
 
-```sh
+| Question | Answer, condensed | Supporting passage |
+| --- | --- | --- |
+| Which two technology tracks does the instructor cover? | Data engineering on Databricks and Google Cloud. | [0:25–0:36](https://youtu.be/ozaiDRsEbWQ?t=25) |
+| What was the second one? | Data engineering on Google Cloud. | [0:29–0:36](https://youtu.be/ozaiDRsEbWQ?t=29) |
+
+The second question contains neither platform name. Cueframe uses the recent conversation for that video and caption language to resolve the reference, then checks the transcript for evidence.
+
+For a **no-install preview**, download and open the [standalone HTML demo](docs/demo.html). It searches a bundled sample transcript. The Python studio below runs the full conversational pipeline.
+
+## How an answer gets its timestamp
+
+1. **Ingest.** Fetch YouTube captions and group neighboring lines into overlapping passages. Each passage retains the character offsets and playback times of its original captions.
+2. **Retrieve.** Rewrite follow-ups using up to three recent turns. Combine LangChain vector search over local `nomic-embed-text` embeddings with keyword ranking so paraphrases and exact technical names can both surface relevant passages.
+3. **Answer.** An optional RoBERTa reader extracts factual spans and scores them against its no-answer prediction. For questions that need synthesis, `qwen2.5:3b` receives ranked passages and reader hints.
+4. **Cite.** Map supporting text back to its caption range. Selecting the timestamp seeks the embedded player. SQLite stores videos, conversations, and bookmarks locally.
+
+Caption availability and transcription errors affect retrieval. A matching quote identifies where the evidence came from. The player and transcript let the reader check whether it supports the model's interpretation.
+
+## Run locally
+
+Use Python 3.11 or 3.12. Create and activate a virtual environment from the repository root.
+
+~~~sh
 python -m venv .venv
-```
+~~~
 
-Windows PowerShell:
+On Windows PowerShell, use `.\.venv\Scripts\Activate.ps1`. On macOS or Linux, use `source .venv/bin/activate`. Then install the dependencies.
 
-```powershell
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python studio.py
-```
+~~~sh
+python -m pip install -r requirements.txt
+~~~
 
-macOS or Linux:
+For conversational answers, install and start [Ollama](https://ollama.com/download), then download the models. The optional reader adds about 500 MB.
 
-```sh
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python studio.py
-```
-
-Open [Cueframe on localhost](http://127.0.0.1:8501). Paste a link or open one of the featured videos. The server binds to the loopback address. Set `CUEFRAME_PORT` to choose another port.
-
-## Work with a video
-
-- **Ask a question.** The studio defaults to conversational answers using local AI. Set up the two models below. Select keyword excerpt search in Settings to search captions without models.
-- **Check the source.** Click the green time range to seek the embedded player. Search the transcript and click a caption to hear it in context. Videos with embedding restrictions can be opened on YouTube.
-- **Save a moment.** Bookmark an answer's evidence, then return to its timestamp from Saved moments.
-- **Resume your research.** The library retains transcripts, chat history, and saved moments in SQLite at `~/.cueframe/workspace.sqlite`. Override the directory with `CUEFRAME_DATA_DIR`. This is a single-user local workspace.
-- **Export notes.** Download the conversation and bookmarks as Markdown with timestamped YouTube links.
-- **Choose a caption language.** Open Settings before importing a video. English is the fallback. Live ingestion requires accessible YouTube captions and internet access.
-
-## Enable local AI generation
-
-Install [Ollama](https://ollama.com/download), start it locally and download both models:
-
-```sh
+~~~sh
 ollama pull nomic-embed-text
 ollama pull qwen2.5:3b
-```
+python reader.py
+~~~
 
-Run `python reader.py` once to install the optional local RoBERTa transcript reader (about 500 MB). In conversational mode, Cueframe resolves follow-ups from the last three turns on the same video and combines embedding retrieval with keyword ranking. The reader extracts factual answers from caption spans and scores them against its no-answer prediction. For synthesis, the local chat model receives ranked passages and reader hints. Each displayed quote and timestamp comes from the referenced captions. A quote match verifies that the words appear in the transcript. Use the timestamp to assess the model's interpretation.
+~~~sh
+python studio.py
+~~~
 
-## Demo and tests
+Open [Cueframe Studio](http://127.0.0.1:8501), paste a captioned YouTube URL, and ask a question. **Settings → Keyword excerpt search** also works without model downloads. The first conversational question builds the video's index and can take over a minute on a CPU.
 
-The featured videos use real captions. For a standalone preview without installing Python, open **demo.html**, which searches an original bundled sample. The earlier Streamlit interface remains available via `python -m streamlit run app.py` on a free port.
+The server binds to loopback. `CUEFRAME_PORT` selects the port and `CUEFRAME_DATA_DIR` overrides the default SQLite directory, `~/.cueframe`.
 
-Run `python -m unittest -v` inside the environment. Tests cover retrieval, citation timing, local persistence and the Streamlit compatibility interface. The model tests use test doubles.
+## Code and verification
 
-## Media
+| Location | Responsibility |
+| --- | --- |
+| [studio.py](studio.py) | Local HTTP API, transcript ingestion, SQLite storage, and conversation history |
+| [rag.py](rag.py) | Chunking, hybrid retrieval, contextual answers, and citation alignment |
+| [reader.py](reader.py) | Checksum-verified model installation and CPU inference with ONNX Runtime |
+| [web/](web/) | Browser workspace, transcript search, player, bookmarks, and export |
+| [tests/](tests/) | Retrieval, follow-ups, citation timing, history isolation, and persistence |
 
-The studio's [orbital photograph](https://images.unsplash.com/photo-1446776811953-b23d57bd21aa) is served locally. Featured cards use their videos' YouTube thumbnails, titles, and channel names.
+Run `python -m unittest discover -v`. The automated suite uses fixtures and model test doubles, so it can run without Ollama or YouTube access. GitHub Actions runs the same command on pushes and pull requests.
+
+The studio uses an [orbital photograph](https://images.unsplash.com/photo-1446776811953-b23d57bd21aa) and official thumbnails for the featured YouTube videos.

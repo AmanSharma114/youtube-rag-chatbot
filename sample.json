@@ -1,8 +1,0 @@
-[
-  {"start": 0, "duration": 16, "text": "A transcript lets us search the words spoken in a video. Each caption has a start time and a duration."},
-  {"start": 16, "duration": 22, "text": "We split the transcript into overlapping chunks. Overlap preserves context when an explanation crosses a chunk boundary."},
-  {"start": 38, "duration": 19, "text": "An embedding model converts each chunk into a numeric vector. Similar meanings tend to produce vectors that point in similar directions."},
-  {"start": 57, "duration": 20, "text": "The retriever embeds the question and ranks transcript vectors by cosine similarity. The highest-ranked passages become evidence for the answer."},
-  {"start": 77, "duration": 22, "text": "A local language model reads those passages and answers the question. If the transcript lacks the answer, the chatbot should say so."},
-  {"start": 99, "duration": 17, "text": "Timestamps let the viewer jump back to the original explanation and verify the answer in context."}
-]

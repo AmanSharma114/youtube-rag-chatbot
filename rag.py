@@ -12,7 +12,6 @@ from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 LOCAL = "http://127.0.0.1:11434"
-MISSING = "I couldn't find support for that in the retrieved transcript passages."
 
 
 class CitationError(RuntimeError):
