@@ -8,7 +8,7 @@ let toastTimer;
 let pending = false;
 let preferences;
 try { preferences = JSON.parse(localStorage.getItem("cueframe-settings") || "{}"); } catch { preferences = {}; }
-$("#mode").value = preferences.mode || "excerpt";
+$("#mode").value = preferences.mode || "ai";
 $("#lang").value = preferences.lang || "en";
 
 function element(tag, text, className) {
@@ -205,7 +205,7 @@ async function ask(question) {
   const version = routeVersion;
   const button = $("#ask button");
   button.disabled = true;
-  button.textContent = "Finding evidence…";
+  button.textContent = settings().mode === "ai" ? "Reading transcript and conversation…" : "Finding passages…";
   try {
     const result = await api("ask", {video:owner.id, lang:owner.lang, question, mode:settings().mode});
     owner.turns.push(result);

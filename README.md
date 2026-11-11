@@ -30,7 +30,7 @@ Open [Cueframe on localhost](http://127.0.0.1:8501). Paste a link or open one of
 
 ## Work with a video
 
-- **Ask a question.** Excerpt mode ranks timestamped transcript passages and displays the speaker's words. It uses lexical matching, so specific terms work best.
+- **Ask a question.** The studio defaults to conversational answers using local AI. Set up the two models below. Select keyword excerpt search in Settings to search captions without models.
 - **Check the source.** Click the green time range to seek the embedded player. Search the transcript and click a caption to hear it in context. Videos with embedding restrictions can be opened on YouTube.
 - **Save a moment.** Bookmark an answer's evidence, then return to its timestamp from Saved moments.
 - **Resume your research.** The library retains transcripts, chat history, and saved moments in SQLite at `~/.cueframe/workspace.sqlite`. Override the directory with `CUEFRAME_DATA_DIR`. This is a single-user local workspace.
@@ -46,7 +46,7 @@ ollama pull nomic-embed-text
 ollama pull qwen2.5:3b
 ```
 
-Select **Settings → Answer mode → Local AI**. On the first AI question, the server embeds overlapping caption chunks and builds a LangChain in-memory vector index. The retriever selects up to four passages, and the local chat model generates statements with exact supporting quotes. Cueframe checks each quote against its referenced passage and attaches the caption range containing the quoted words. A quote match verifies that the words appear in the transcript. Use the timestamp to assess the model's interpretation.
+Run `python reader.py` once to install the optional local RoBERTa transcript reader (about 500 MB). In conversational mode, Cueframe resolves follow-ups from the last three turns on the same video and combines embedding retrieval with keyword ranking. The reader extracts factual answers from caption spans and scores them against its no-answer prediction. For synthesis, the local chat model receives ranked passages and reader hints. Each displayed quote and timestamp comes from the referenced captions. A quote match verifies that the words appear in the transcript. Use the timestamp to assess the model's interpretation.
 
 ## Demo and tests
 

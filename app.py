@@ -6,7 +6,7 @@ import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import YouTubeTranscriptApiException
 
-from rag import MISSING, answer, excerpt_answer, retriever, video_id
+from rag import MISSING, answer, chat_context, excerpt_answer, retriever, video_id
 
 
 def stamp(seconds):
@@ -92,7 +92,7 @@ if question := st.chat_input("Ask about this transcript"):
             if st.session_state.index is None:
                 claims = excerpt_answer(st.session_state.rows, question)
             else:
-                claims = answer(st.session_state.index, question, history[-1][0] if history else "")
+                claims = answer(st.session_state.index, question, chat_context(history), rows=st.session_state.rows)
         history.append((question, claims))
         show_turn(question, claims)
     except Exception as exc:

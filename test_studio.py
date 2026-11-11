@@ -44,7 +44,7 @@ class StudioTests(unittest.TestCase):
             studio.initialize()
             with closing(studio.database()) as db, db:
                 studio.process(db, "load", video)
-                result = studio.process(db, "ask", {**video, "question":"Which camera?"})
+                result = studio.process(db, "ask", {**video, "question":"Which camera?", "mode":"excerpt"})
                 quote, timing = result["claims"][0][1:]
                 for _ in range(2):
                     studio.process(db, "save", {**video, **timing, "quote":quote})
