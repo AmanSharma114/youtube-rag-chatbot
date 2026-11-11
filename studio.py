@@ -12,7 +12,7 @@ import requests
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import YouTubeTranscriptApiException
 
-from rag import CitationError, answer, chat_context, excerpt_answer, retriever, video_id
+from rag import CitationError, answer, chat_context, excerpt_answer, informative_claims, retriever, video_id
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.getenv("CUEFRAME_DATA_DIR", Path.home() / ".cueframe"))
@@ -82,7 +82,8 @@ def process(db, route, data):
     rows = json.loads(record["captions"])
     if route == "load":
         turns = db.execute("SELECT question, claims FROM turns WHERE video=? AND lang=? ORDER BY id", key)
-        return {**dict(record), "captions": rows, "turns": [{"question": t[0], "claims": json.loads(t[1])} for t in turns]}
+        return {**dict(record), "captions": rows,
+                "turns": [{"question": q, "claims": informative_claims(q, json.loads(c))} for q, c in turns]}
     if route == "ask":
         question = data["question"].strip()
         if not 1 <= len(question) <= 2000:

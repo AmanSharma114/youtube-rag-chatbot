@@ -190,9 +190,16 @@ def retriever(rows):
     return store.as_retriever(search_kwargs={"k": 4})
 
 
+def informative_claims(question, claims):
+    # The model sometimes echoes the category in the question ("two tracks")
+    # even though the quoted evidence names both items.
+    return [(quote if words(statement) <= words(question) else statement, quote, timing)
+            for statement, quote, timing in claims]
+
+
 def chat_context(turns):
     """Limit history sent to the model to turns from the current video."""
-    return [{"question": question, "answer": [claim[0][:350] for claim in claims[:4]]}
+    return [{"question": question, "answer": [claim[0][:350] for claim in informative_claims(question, claims[:4])]}
             for question, claims in turns[-3:]]
 
 
@@ -268,7 +275,7 @@ def answer(index, question, previous, *, title="", rows=None):
             return []
         verified = cited_claims(selected, claims)
         if verified:
-            return verified
+            return informative_claims(question, verified)
         messages.append(("human", "Return claims with a matching numeric source ID and a direct answer."))
     raise CitationError("The local model could not provide verifiable citations. Please try rephrasing.")
 
